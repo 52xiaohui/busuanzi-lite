@@ -16,6 +16,9 @@ const app = express();
 // 在最开始就设置 trust proxy
 app.set('trust proxy', true);
 
+// 添加 JSON 解析中间件
+app.use(express.json());
+
 // IP 获取中间件必须放在最前面，在其他所有中间件之前
 app.use((req, res, next) => {
   req.realIP = getRealIP(req);
