@@ -6,7 +6,7 @@ const router = express.Router();
 // 添加常量配置
 const CONFIG = {
   LOG_MAX_LENGTH: 1000,    // 日志最大保存条数
-  DATA_EXPIRE_DAYS: 30,    // 数据过期天数
+  DATA_EXPIRE_DAYS: parseInt(process.env.LOG_RETENTION_DAYS) || 30,    // 从环境变量读取数据过期天数
   HOURLY_EXPIRE_HOURS: 48  // 小时数据过期小时数
 };
 

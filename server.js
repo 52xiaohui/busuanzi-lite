@@ -41,13 +41,11 @@ app.use((req, res, next) => {
 
 // 限流保护
 const limiter = rateLimit({
-  windowMs: 1 * 60 * 1000, // 1分钟
-  max: 120, // 限制每个IP每分钟120次请求
-  // 添加自定义的 IP 提取函数
+  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 60000, // 从环境变量读取
+  max: parseInt(process.env.RATE_LIMIT_MAX) || 120, // 从环境变量读取
   keyGenerator: (req) => {
     return req.realIP || req.ip || 'unknown';
   },
-  // 添加验证跳过
   validate: { trustProxy: false }
 });
 app.use(limiter);

@@ -75,11 +75,39 @@
         .btn-danger:hover {
             background: #d32f2f;
         }
+        .login-container {
+            max-width: 400px;
+            margin: 100px auto;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        .login-container input {
+            width: 100%;
+            padding: 8px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        #main-container {
+            display: none;
+        }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-    <div class="container">
+    <!-- 登录界面 -->
+    <div id="login-container" class="login-container">
+        <h2>管理员登录</h2>
+        <input type="password" id="admin-password" placeholder="请输入管理密码" />
+        <button class="btn" onclick="login()">登录</button>
+        <p id="login-error" style="color: red; display: none;">密码错误</p>
+    </div>
+
+    <!-- 主界面容器 -->
+    <div id="main-container" class="container">
         <h1>访问统计管理</h1>
         
         <div class="domain-selector" style="margin-bottom: 20px;">

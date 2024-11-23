@@ -84,12 +84,41 @@ location / {
 - 访问记录保留最近 1000 条
 - 每天的统计数据保留 30 天
 
+## 安全配置
+
+### 1. 管理界面保护
+在 `.env` 文件中设置以下参数：
+```bash
+# 设置管理界面密码（必须修改）
+ADMIN_PASSWORD=your-secure-password
+
+# 设置 JWT 密钥（必须修改）
+# 可以使用以下命令生成随机密钥：
+# node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
+JWT_SECRET=your-jwt-secret-key
+```
+
+### 2. 访问限流
+```bash
+# 限流配置
+RATE_LIMIT_MAX=120          # 每分钟最大请求数
+RATE_LIMIT_WINDOW_MS=60000  # 时间窗口（毫秒）
+```
+
+### 3. 数据保留
+```bash
+# 数据保留配置
+LOG_RETENTION_DAYS=30  # 访问日志保留天数
+```
+
 ## 安全建议
 
-1. 修改默认端口
-2. 设置管理面板访问密码
-3. 使用 HTTPS
-4. 适当配置访问限流
+1. 必须修改默认的管理密码
+2. 使用随机生成的 JWT 密钥
+3. 根据实际需求调整访问限流参数
+4. 使用 HTTPS 加密传输
+5. 定期备份 Redis 数据
+6. 适当设置防火墙规则
 
 ## 常见问题
 

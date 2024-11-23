@@ -1,7 +1,51 @@
 import express from 'express';
 import { redis } from '../utils/redis.js';
+import jwt from 'jsonwebtoken';
 
 const router = express.Router();
+const JWT_SECRET = process.env.JWT_SECRET;
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
+
+// 验证这些必需的配置是否存在
+if (!JWT_SECRET || !ADMIN_PASSWORD) {
+  console.error('错误: 必须设置 JWT_SECRET 和 ADMIN_PASSWORD 环境变量');
+  process.exit(1);
+}
+
+// 验证中间件
+const authMiddleware = (req, res, next) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({ error: '未授权' });
+    }
+
+    const token = authHeader.split(' ')[1];
+    try {
+        jwt.verify(token, JWT_SECRET);
+        next();
+    } catch (error) {
+        res.status(401).json({ error: '无效的令牌' });
+    }
+};
+
+// 登录路由
+router.post('/login', (req, res) => {
+    const { password } = req.body;
+    if (password === ADMIN_PASSWORD) {
+        const token = jwt.sign({ admin: true }, JWT_SECRET, { expiresIn: '24h' });
+        res.json({ token });
+    } else {
+        res.status(401).json({ error: '密码错误' });
+    }
+});
+
+// 验证令牌
+router.get('/check-auth', authMiddleware, (req, res) => {
+    res.json({ valid: true });
+});
+
+// 为所有其他管理路由添加认证中间件
+router.use(authMiddleware);
 
 // 获取域名列表
 router.get('/domains', async (req, res) => {

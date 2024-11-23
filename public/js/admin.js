@@ -2,7 +2,7 @@ let visitChart;
 
 async function loadDomains() {
     try {
-        const response = await fetch('/admin/domains');
+        const response = await fetchWithAuth('/admin/domains');
         const domains = await response.json();
         const select = document.getElementById('domain');
         select.innerHTML = domains.map(domain => 
@@ -20,7 +20,7 @@ async function loadDomains() {
 async function fetchStats() {
     try {
         const domain = document.getElementById('domain').value;
-        const response = await fetch(`/admin/stats?domain=${encodeURIComponent(domain)}`);
+        const response = await fetchWithAuth(`/admin/stats?domain=${encodeURIComponent(domain)}`);
         const data = await response.json();
         
         // 更新统计卡片
@@ -42,7 +42,7 @@ async function fetchStats() {
 async function updateChart(domain) {
     try {
         // 获取最近7天的数据
-        const response = await fetch(`/admin/chart-data?domain=${encodeURIComponent(domain)}`);
+        const response = await fetchWithAuth(`/admin/chart-data?domain=${encodeURIComponent(domain)}`);
         const data = await response.json();
         
         if (visitChart) {
@@ -175,6 +175,77 @@ function initChart() {
         }
     });
 }
+
+// 添加登录相关函数
+async function login() {
+    const password = document.getElementById('admin-password').value;
+    try {
+        const response = await fetch('/admin/login', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ password })
+        });
+
+        if (response.ok) {
+            const { token } = await response.json();
+            localStorage.setItem('admin_token', token);
+            showMainContainer();
+            initAdmin();
+        } else {
+            document.getElementById('login-error').style.display = 'block';
+        }
+    } catch (error) {
+        console.error('登录失败:', error);
+        document.getElementById('login-error').style.display = 'block';
+    }
+}
+
+function showMainContainer() {
+    document.getElementById('login-container').style.display = 'none';
+    document.getElementById('main-container').style.display = 'block';
+}
+
+// 检查登录状态
+async function checkAuth() {
+    const token = localStorage.getItem('admin_token');
+    if (!token) return false;
+
+    try {
+        const response = await fetch('/admin/check-auth', {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        return response.ok;
+    } catch {
+        return false;
+    }
+}
+
+// 修改原有的请求函数，添加认证头
+async function fetchWithAuth(url, options = {}) {
+    const token = localStorage.getItem('admin_token');
+    return fetch(url, {
+        ...options,
+        headers: {
+            ...options.headers,
+            'Authorization': `Bearer ${token}`
+        }
+    });
+}
+
+// 初始化管理界面
+async function initAdmin() {
+    if (await checkAuth()) {
+        showMainContainer();
+        loadDomains();
+    }
+}
+
+// 页面加载完成后检查登录状态
+document.addEventListener('DOMContentLoaded', initAdmin);
 
 // 页面加载完成后的初始化
 document.addEventListener('DOMContentLoaded', () => {
