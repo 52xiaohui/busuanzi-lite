@@ -7,7 +7,7 @@
     const domain = window.location.hostname;
     
     fetch(`${COUNT_API}?domain=${encodeURIComponent(domain)}&path=${encodeURIComponent(fullPath)}`, {
-      credentials: 'include',
+      // credentials: 'include',
       mode: 'cors',
       headers: {
         'Referer': window.location.href // 添加来源页面信息

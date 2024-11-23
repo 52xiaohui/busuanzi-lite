@@ -13,13 +13,27 @@ const __dirname = dirname(__filename);
 
 const app = express();
 
-// 启用CORS
-app.use(cors());
+// 配置 CORS，完全开放
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: '*',
+  credentials: true
+}));
+
+// 添加额外的 CORS 头
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', '*');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  next();
+});
 
 // 限流保护
 const limiter = rateLimit({
   windowMs: 1 * 60 * 1000, // 1分钟
-  max: 60 // 限制每个IP每分钟60次请求
+  max: 120 // 限制每个IP每分钟60次请求
 });
 app.use(limiter);
 
