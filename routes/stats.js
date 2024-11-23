@@ -8,13 +8,6 @@ router.get('/', async (req, res) => {
   try {
     const domain = req.query.domain || 'unknown';
     const path = req.query.path || '/';
-    const ip = req.realIP;
-    const userAgent = req.headers['user-agent'];
-    const referer = req.headers['referer'];
-    
-    // 获取当前日期
-    const today = new Date().toISOString().split('T')[0];
-    const hour = new Date().getHours().toString().padStart(2, '0');
     
     // 获取当前统计数据
     const stats = await getStats(domain, path);
@@ -31,25 +24,18 @@ router.get('/', async (req, res) => {
       redis.incr(`stats:${domain}:${today}:${hour}:pv`),
       
       // 更新站点总 UV
-      redis.pfadd(`site:${domain}:uv`, ip),
+      redis.pfadd(`site:${domain}:uv`, req.realIP),
       // 更新当天 UV
-      redis.pfadd(`stats:${domain}:${today}:uv`, ip),
+      redis.pfadd(`stats:${domain}:${today}:uv`, req.realIP),
       // 更新当前小时 UV
-      redis.pfadd(`stats:${domain}:${today}:${hour}:uv`, ip),
+      redis.pfadd(`stats:${domain}:${today}:${hour}:uv`, req.realIP),
       
-      // 记录访问日志
+      // 记录访问日志，只保留必要信息
       redis.lpush(`logs:${domain}`, JSON.stringify({
         timestamp: Date.now(),
-        ip: ip || 'unknown',
+        ip: req.realIP,
         path: path || '/',
-        userAgent,
-        referer,
-        url: req.originalUrl,
-        headers: {
-          'x-real-ip': req.headers['x-real-ip'],
-          'x-forwarded-for': req.headers['x-forwarded-for'],
-          'remote-addr': req.connection.remoteAddress
-        }
+        referer: req.headers['referer']
       })),
       
       // 保持日志列表在合理长度

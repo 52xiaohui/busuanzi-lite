@@ -16,6 +16,12 @@ const app = express();
 // 在最开始就设置 trust proxy
 app.set('trust proxy', true);
 
+// IP 获取中间件必须放在最前面，在其他所有中间件之前
+app.use((req, res, next) => {
+  req.realIP = getRealIP(req);
+  next();
+});
+
 // 配置 CORS，完全开放
 app.use(cors({
   origin: '*',
@@ -36,27 +42,19 @@ app.use((req, res, next) => {
 // 限流保护
 const limiter = rateLimit({
   windowMs: 1 * 60 * 1000, // 1分钟
-  max: 120 // 限制每个IP每分钟60次请求
+  max: 120, // 限制每个IP每分钟120次请求
+  // 添加自定义的 IP 提取函数
+  keyGenerator: (req) => {
+    return req.realIP || req.ip || 'unknown';
+  },
+  // 添加验证跳过
+  validate: { trustProxy: false }
 });
 app.use(limiter);
 
 // 提供静态文件服务
 app.use('/js', express.static(path.join(__dirname, 'public/js')));
 app.use(express.static(path.join(__dirname, 'public')));
-
-// 添加请求日志中间件
-const requestLogger = (req, res, next) => {
-  const start = Date.now();
-  res.on('finish', () => {
-    const duration = Date.now() - start;
-    console.log(
-      `${new Date().toISOString()} ${req.method} ${req.url} ${res.statusCode} ${duration}ms`
-    );
-  });
-  next();
-};
-
-app.use(requestLogger);
 
 // 简单的内存缓存实现
 class Cache {
@@ -157,34 +155,14 @@ const performanceMonitor = {
 
 // 修改获取真实 IP 的函数
 function getRealIP(req) {
-  // 使用 Express 的 req.ip，因为已经设置了 trust proxy
-  if (req.ip) {
-    // 如果是 IPv6 格式的 IPv4 地址，去掉前缀
-    return req.ip.replace(/^::ffff:/, '');
-  }
-
-  // 备用方案
-  return req.headers['x-real-ip'] || 
-         req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 
-         req.socket.remoteAddress?.replace(/^::ffff:/, '') || 
-         'unknown';
+  // 按优先级依次尝试不同的 IP 来源
+  const ip = 
+    req.headers['x-real-ip'] || // Nginx 转发的真实 IP
+    req.headers['x-forwarded-for']?.split(',')[0]?.trim() || // 代理链中的第一个 IP
+    req.ip?.replace(/^::ffff:/, '') || // Express 的 IP（去掉 IPv6 前缀）
+    req.connection.remoteAddress?.replace(/^::ffff:/, '') || // 直接连接的 IP
+    'unknown';
+    
+  return ip;
 }
-
-// IP 获取中间件放在其他中间件之前
-app.use((req, res, next) => {
-  req.realIP = getRealIP(req);
-  
-  // 调试日志
-  console.log('IP 信息:', {
-    ip: req.realIP,
-    originalUrl: req.originalUrl,
-    headers: {
-      'x-real-ip': req.headers['x-real-ip'],
-      'x-forwarded-for': req.headers['x-forwarded-for'],
-      'host': req.headers.host
-    }
-  });
-  
-  next();
-});
   
