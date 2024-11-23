@@ -13,6 +13,9 @@ const __dirname = dirname(__filename);
 
 const app = express();
 
+// 在最开始就设置 trust proxy
+app.set('trust proxy', true);
+
 // 配置 CORS，完全开放
 app.use(cors({
   origin: '*',
@@ -154,32 +157,34 @@ const performanceMonitor = {
 
 // 修改获取真实 IP 的函数
 function getRealIP(req) {
-  // 按优先级尝试获取真实 IP
-  const realIP = 
-    req.headers['x-real-ip'] ||                         // Nginx 配置的真实 IP
-    req.headers['x-forwarded-for']?.split(',')[0] ||    // 代理链的第一个 IP
-    req.connection.remoteAddress?.replace(/^::ffff:/, '') || // IPv4 映射地址
-    req.socket.remoteAddress?.replace(/^::ffff:/, '') ||     // Socket IP
-    req.ip?.replace(/^::ffff:/, '') ||                       // Express IP
-    'unknown';                                               // 默认值
+  // 使用 Express 的 req.ip，因为已经设置了 trust proxy
+  if (req.ip) {
+    // 如果是 IPv6 格式的 IPv4 地址，去掉前缀
+    return req.ip.replace(/^::ffff:/, '');
+  }
 
-  console.log('IP 获取详情:', {
-    'x-real-ip': req.headers['x-real-ip'],
-    'x-forwarded-for': req.headers['x-forwarded-for'],
-    'connection.remoteAddress': req.connection.remoteAddress,
-    'socket.remoteAddress': req.socket.remoteAddress,
-    'express.ip': req.ip,
-    'final.ip': realIP
-  });
-
-  return realIP;
+  // 备用方案
+  return req.headers['x-real-ip'] || 
+         req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 
+         req.socket.remoteAddress?.replace(/^::ffff:/, '') || 
+         'unknown';
 }
 
-// 修改 IP 获取中间件
+// IP 获取中间件放在其他中间件之前
 app.use((req, res, next) => {
-  // 确保在所有中间件之前设置 trust proxy
-  app.set('trust proxy', true);
   req.realIP = getRealIP(req);
+  
+  // 调试日志
+  console.log('IP 信息:', {
+    ip: req.realIP,
+    originalUrl: req.originalUrl,
+    headers: {
+      'x-real-ip': req.headers['x-real-ip'],
+      'x-forwarded-for': req.headers['x-forwarded-for'],
+      'host': req.headers.host
+    }
+  });
+  
   next();
 });
   
