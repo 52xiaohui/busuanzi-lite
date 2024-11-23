@@ -152,21 +152,34 @@ const performanceMonitor = {
   }
 };
 
-// 添加获取真实 IP 的函数
+// 修改获取真实 IP 的函数
 function getRealIP(req) {
-  return req.headers['x-real-ip'] || 
-         req.headers['x-forwarded-for']?.split(',')[0] || 
-         req.connection.remoteAddress || 
-         req.socket.remoteAddress || 
-         req.ip;
+  // 按优先级尝试获取真实 IP
+  const realIP = 
+    req.headers['x-real-ip'] ||                         // Nginx 配置的真实 IP
+    req.headers['x-forwarded-for']?.split(',')[0] ||    // 代理链的第一个 IP
+    req.connection.remoteAddress?.replace(/^::ffff:/, '') || // IPv4 映射地址
+    req.socket.remoteAddress?.replace(/^::ffff:/, '') ||     // Socket IP
+    req.ip?.replace(/^::ffff:/, '') ||                       // Express IP
+    'unknown';                                               // 默认值
+
+  console.log('IP 获取详情:', {
+    'x-real-ip': req.headers['x-real-ip'],
+    'x-forwarded-for': req.headers['x-forwarded-for'],
+    'connection.remoteAddress': req.connection.remoteAddress,
+    'socket.remoteAddress': req.socket.remoteAddress,
+    'express.ip': req.ip,
+    'final.ip': realIP
+  });
+
+  return realIP;
 }
 
-// 添加 IP 获取中间件
+// 修改 IP 获取中间件
 app.use((req, res, next) => {
+  // 确保在所有中间件之前设置 trust proxy
+  app.set('trust proxy', true);
   req.realIP = getRealIP(req);
   next();
 });
-
-// 配置 Express 信任代理
-app.set('trust proxy', true);
   

@@ -40,12 +40,16 @@ router.get('/', async (req, res) => {
       // 记录访问日志
       redis.lpush(`logs:${domain}`, JSON.stringify({
         timestamp: Date.now(),
-        ip: ip,
+        ip: ip || 'unknown',
         path: path || '/',
         userAgent,
         referer,
         url: req.originalUrl,
-        forwardedFor: req.headers['x-forwarded-for'] || '-'
+        headers: {
+          'x-real-ip': req.headers['x-real-ip'],
+          'x-forwarded-for': req.headers['x-forwarded-for'],
+          'remote-addr': req.connection.remoteAddress
+        }
       })),
       
       // 保持日志列表在合理长度
