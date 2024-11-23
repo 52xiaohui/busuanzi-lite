@@ -150,4 +150,23 @@ const performanceMonitor = {
       `);
     }
   }
-}; 
+};
+
+// 添加获取真实 IP 的函数
+function getRealIP(req) {
+  return req.headers['x-real-ip'] || 
+         req.headers['x-forwarded-for']?.split(',')[0] || 
+         req.connection.remoteAddress || 
+         req.socket.remoteAddress || 
+         req.ip;
+}
+
+// 添加 IP 获取中间件
+app.use((req, res, next) => {
+  req.realIP = getRealIP(req);
+  next();
+});
+
+// 配置 Express 信任代理
+app.set('trust proxy', true);
+  

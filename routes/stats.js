@@ -8,7 +8,7 @@ router.get('/', async (req, res) => {
   try {
     const domain = req.query.domain || 'unknown';
     const path = req.query.path || '/';
-    const ip = req.ip;
+    const ip = req.realIP;
     const userAgent = req.headers['user-agent'];
     const referer = req.headers['referer'];
     
@@ -40,11 +40,12 @@ router.get('/', async (req, res) => {
       // 记录访问日志
       redis.lpush(`logs:${domain}`, JSON.stringify({
         timestamp: Date.now(),
-        ip,
+        ip: ip,
         path: path || '/',
         userAgent,
         referer,
-        url: req.originalUrl
+        url: req.originalUrl,
+        forwardedFor: req.headers['x-forwarded-for'] || '-'
       })),
       
       // 保持日志列表在合理长度
