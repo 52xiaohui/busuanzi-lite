@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>访问统计测试</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .stats { margin: 20px 0; }
+        button { margin: 5px; padding: 5px 10px; }
+    </style>
+</head>
+<body>
+    <h1>访问统计测试页面</h1>
+    
+    <div class="stats">
+        <p>站点访问量（PV）：<span id="busuanzi_value_site_pv">0</span></p>
+        <p>站点访客数（UV）：<span id="busuanzi_value_site_uv">0</span></p>
+        <p>页面访问量（PV）：<span id="busuanzi_value_page_pv">0</span></p>
+    </div>
+
+    <div class="controls">
+        <button onclick="checkStats()">查看统计数据</button>
+        <button onclick="resetStats()">重置统计数据</button>
+    </div>
+
+    <div id="debug" style="margin-top: 20px;">
+        <h3>调试信息：</h3>
+        <pre id="debugInfo"></pre>
+    </div>
+
+    <script src="/js/count.js"></script>
+    <script>
+        function checkStats() {
+            fetch('http://localhost:3000/test')
+                .then(res => res.json())
+                .then(data => {
+                    document.getElementById('debugInfo').textContent = 
+                        JSON.stringify(data, null, 2);
+                })
+                .catch(console.error);
+        }
+
+        function resetStats() {
+            fetch('http://localhost:3000/reset')
+                .then(res => res.json())
+                .then(data => {
+                    alert(data.message);
+                    location.reload();
+                })
+                .catch(console.error);
+        }
+    </script>
+</body>
+</html> 
