@@ -56,39 +56,6 @@ app.use(limiter);
 app.use('/js', express.static(path.join(__dirname, 'public/js')));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// 简单的内存缓存实现
-class Cache {
-  constructor(ttl = 60000) { // 默认缓存1分钟
-    this.cache = new Map();
-    this.ttl = ttl;
-  }
-
-  set(key, value) {
-    this.cache.set(key, {
-      value,
-      timestamp: Date.now()
-    });
-  }
-
-  get(key) {
-    const data = this.cache.get(key);
-    if (!data) return null;
-    
-    if (Date.now() - data.timestamp > this.ttl) {
-      this.cache.delete(key);
-      return null;
-    }
-    
-    return data.value;
-  }
-
-  clear() {
-    this.cache.clear();
-  }
-}
-
-const statsCache = new Cache(60000); // 1分钟缓存
-
 // 将路由处理分离到单独的文件
 import statsRouter from './routes/stats.js';
 import adminRouter from './routes/admin.js';
@@ -97,9 +64,33 @@ app.use('/count', statsRouter);
 app.use('/admin', adminRouter);
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`服务运行在端口 ${PORT}`);
 });
+
+// 优雅关闭处理
+process.on('SIGTERM', gracefulShutdown);
+process.on('SIGINT', gracefulShutdown);
+
+async function gracefulShutdown() {
+  console.log('正在关闭服务器...');
+  server.close(async () => {
+    try {
+      await redis.quit();
+      console.log('Redis 连接已关闭');
+      process.exit(0);
+    } catch (error) {
+      console.error('关闭时发生错误:', error);
+      process.exit(1);
+    }
+  });
+
+  // 如果 10 秒内没有完成关闭，强制退出
+  setTimeout(() => {
+    console.error('无法在规定时间内完成关闭，强制退出');
+    process.exit(1);
+  }, 10000);
+}
 
 // 添加统一的错误处理中间件
 const errorHandler = (err, req, res, next) => {
@@ -134,25 +125,6 @@ app.get('/health', async (req, res) => {
   }
 });
 
-// 简单的性能监控
-const performanceMonitor = {
-  requests: 0,
-  errors: 0,
-  startTime: Date.now(),
-
-  log(duration) {
-    this.requests++;
-    if (this.requests % 100 === 0) {
-      console.log(`性能统计:
-        总请求数: ${this.requests}
-        错误数: ${this.errors}
-        运行时间: ${(Date.now() - this.startTime) / 1000}秒
-        平均响应时间: ${duration}ms
-      `);
-    }
-  }
-};
-
 // 修改获取真实 IP 的函数
 function getRealIP(req) {
   // 按优先级依次尝试不同的 IP 来源
@@ -165,4 +137,12 @@ function getRealIP(req) {
     
   return ip;
 }
+
+// 添加请求超时中间件
+app.use((req, res, next) => {
+  res.setTimeout(5000, () => {
+    res.status(408).json({ error: '请求超时' });
+  });
+  next();
+});
   

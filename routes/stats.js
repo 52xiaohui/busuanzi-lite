@@ -3,11 +3,23 @@ import { redis, getStats } from '../utils/redis.js';
 
 const router = express.Router();
 
+// 添加常量配置
+const CONFIG = {
+  LOG_MAX_LENGTH: 1000,    // 日志最大保存条数
+  DATA_EXPIRE_DAYS: 30,    // 数据过期天数
+  HOURLY_EXPIRE_HOURS: 48  // 小时数据过期小时数
+};
+
 // 访问统计接口
 router.get('/', async (req, res) => {
   try {
     const domain = req.query.domain || 'unknown';
     const path = req.query.path || '/';
+    
+    // 获取当前日期和小时
+    const now = new Date();
+    const today = now.toISOString().split('T')[0];
+    const hour = now.getHours().toString().padStart(2, '0');
     
     // 获取当前统计数据
     const stats = await getStats(domain, path);
@@ -39,20 +51,26 @@ router.get('/', async (req, res) => {
       })),
       
       // 保持日志列表在合理长度
-      redis.ltrim(`logs:${domain}`, 0, 999),
+      redis.ltrim(`logs:${domain}`, 0, CONFIG.LOG_MAX_LENGTH),
       
       // 记录域名
       redis.sadd('domains', domain)
     ]);
 
-    // 设置当天数据的过期时间（30天）
-    const expire = 30 * 24 * 60 * 60; // 30天的秒数
-    await Promise.all([
-      redis.expire(`stats:${domain}:${today}:pv`, expire),
-      redis.expire(`stats:${domain}:${today}:uv`, expire),
-      redis.expire(`stats:${domain}:${today}:${hour}:pv`, expire),
-      redis.expire(`stats:${domain}:${today}:${hour}:uv`, expire)
-    ]);
+    // 批量设置过期时间
+    const dailyExpire = CONFIG.DATA_EXPIRE_DAYS * 24 * 60 * 60;
+    const hourlyExpire = CONFIG.HOURLY_EXPIRE_HOURS * 60 * 60;
+    
+    const expireOps = [
+      [`stats:${domain}:${today}:pv`, dailyExpire],
+      [`stats:${domain}:${today}:uv`, dailyExpire],
+      [`stats:${domain}:${today}:${hour}:pv`, hourlyExpire],
+      [`stats:${domain}:${today}:${hour}:uv`, hourlyExpire]
+    ];
+
+    await Promise.all(
+      expireOps.map(([key, ttl]) => redis.expire(key, ttl))
+    );
 
     res.json(stats);
   } catch (error) {

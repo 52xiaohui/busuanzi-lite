@@ -33,16 +33,16 @@ router.get('/stats', async (req, res) => {
     const now = new Date();
     const today = now.toISOString().split('T')[0];
     
-    const pipeline = redis.pipeline();
-    
-    // 获取指定域名的统计数据
-    pipeline.get(`site:${domain}:pv`);
-    pipeline.pfcount(`site:${domain}:uv`);
-    pipeline.get(`site:${domain}:${today}:pv`);
-    pipeline.pfcount(`site:${domain}:${today}:uv`);
-    pipeline.lrange(`logs:${domain}`, 0, 49);
-    
-    const results = await pipeline.exec();
+    // 使用 retryOperation
+    const results = await redis.retryOperation(async () => {
+      const pipeline = redis.pipeline();
+      pipeline.get(`site:${domain}:pv`);
+      pipeline.pfcount(`site:${domain}:uv`);
+      pipeline.get(`site:${domain}:${today}:pv`);
+      pipeline.pfcount(`site:${domain}:${today}:uv`);
+      pipeline.lrange(`logs:${domain}`, 0, 49);
+      return await pipeline.exec();
+    });
     
     const [sitePV, siteUV, todayPV, todayUV, logs] = results.map(r => r[1] || 0);
     

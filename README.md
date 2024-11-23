@@ -1,59 +1,63 @@
 # Busuanzi-Lite
 
-一个轻量级的网站访问统计系统，基于 Node.js 和 Redis。
+一个轻量级的网站访问统计系统，基于 Node.js 和 Redis。专注于简单、可靠的访问统计功能。
 
-## 功能特点
+## 主要特点
 
-- 🚀 轻量级，易于部署
-- 📊 统计 PV（页面访问量）和 UV（独立访客数）
-- 📈 支持站点总量和单页面统计
-- 🔄 实时更新
-- 📱 响应式设计
-- 🛡️ 内置限流保护
-- 🎯 精确的UV统计（基于HyperLogLog）
-- 📊 可视化管理界面
-- 📥 数据导出功能
-
-## 系统要求
-
-- Node.js >= 14
-- Redis >= 6
-- npm 或 yarn
+- 🚀 轻量级，低资源占用
+- 📊 实时统计 PV/UV
+- 🔒 可靠的 UV 统计（基于 IP）
+- 📈 支持多域名统计
+- 🛡️ 内置访问限流保护
+- 📱 响应式管理界面
+- 🔄 自动清理过期数据
 
 ## 快速开始
 
-1. 克隆仓库：
-```
-git clone https://github.com/你的用户名/busuanzi-lite.git
-cd busuanzi-lite
-```
-2. 安装依赖：
-```
-npm install
-```
-3. 配置环境变量：
-```
-cp .env.example .env
-#编辑 .env 文件，设置你的配置：
-PORT=3000
-REDIS_URL=redis://127.0.0.1:6379
-NODE_ENV=development
-```
+### 1. 环境要求
+- Node.js >= 14
+- Redis >= 6
+- Nginx (推荐)
 
-4. 启动服务：
-```
+### 2. 安装部署
+
+```bash
+# 克隆项目
+git clone https://github.com/52xiaohui/busuanzi-lite.git
+cd busuanzi-lite
+
+# 安装依赖
+npm install
+
+# 配置环境变量
+cp .env.example .env
+# 编辑 .env 文件设置必要的配置项
+
+# 启动服务
 npm start
 ```
 
-## 使用方法
+### 3. Nginx 配置示例
 
-1. 在你的网页中引入统计脚本：
-```
-<script async src="http://你的域名/js/count.js"></script>
+```nginx
+location / {
+    proxy_pass http://127.0.0.1:3000;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+}
 ```
 
-2. 添加统计显示元素：
-```
+### 4. 使用方法
+
+在需要统计的网页添加：
+
+```html
+<!-- 引入统计脚本 -->
+<script async src="https://你的域名/js/count.js"></script>
+
+<!-- 显示统计数据 -->
 <span id="busuanzi_container_site_pv">
     总访问量: <span id="busuanzi_value_site_pv"></span>
 </span>
@@ -65,98 +69,43 @@ npm start
 </span>
 ```
 
-## 管理界面
+## 管理面板
 
-访问 http://你的域名:3000/admin.html 进入管理界面，可以：
-
+访问 `https://你的域名/admin.html` 可以：
 - 查看实时访问统计
 - 查看访问趋势图表
-- 查看最近访问记录
 - 导出统计数据
-- 重置统计数据（仅开发环境）
+- 查看最近访问记录
 
-## API 说明
+## 数据说明
 
-### 获取访问统计
-- 端点：GET /count
-- 参数：
-  - url: 页面URL（必需）
-- 返回示例：
-```
-{
-  "totalPV": "100",
-  "pagePV": "10",
-  "totalUV": "50",
-  "pageUV": "5"
-}
-```
+- PV（Page View）：页面访问量
+- UV（Unique Visitor）：独立访客数
+- 访问记录保留最近 1000 条
+- 每天的统计数据保留 30 天
 
-### 管理接口
-- 获取统计数据：GET /admin/stats
-- 导出数据：GET /admin/export
-- 重置数据：POST /admin/reset（仅开发环境）
+## 安全建议
 
-## 开发
-
-1. 测试 Redis 连接：
-```
-node redis_test.js
-```
-
-2. 运行开发服务器：
-```
-npm run dev
-```
-
-## 部署
-
-1. 修改 .env 文件：
-```
-PORT=3000
-REDIS_URL=redis://你的Redis地址:6379
-NODE_ENV=production
-```
-
-2. 使用 PM2 运行：
-```
-npm install -g pm2
-pm2 start server.js --name busuanzi-lite
-```
-3. 配置反向代理
-
-
-
-## 数据备份
-由于 Redis 是基于内存的，数据可能会丢失，建议定期备份 Redis 数据：
-
-1. 自动备份（使用 crontab）：
-```
-0 2 * * * redis-cli SAVE
-```
-
-2. 手动备份：
-```
-redis-cli SAVE
-```
-
-备份文件默认保存在 /var/lib/redis/dump.rdb
+1. 修改默认端口
+2. 设置管理面板访问密码
+3. 使用 HTTPS
+4. 适当配置访问限流
 
 ## 常见问题
 
-1. Redis 连接失败
-- 检查 Redis 服务是否运行
-- 检查连接地址和端口
-- 检查防火墙设置
+1. 统计数据不显示
+   - 检查统计脚本是否正确加载
+   - 确认域名配置是否正确
+   - 查看浏览器控制台错误信息
 
-2. 统计数据不更新
-- 检查 JavaScript 控制台错误
-- 确认 count.js 路径正确
-- 检查 CORS 设置
+2. UV 统计不准确
+   - 确认 Nginx 配置了正确的 IP 头部
+   - 检查是否存在 CDN 缓存
 
-3. 管理界面无法访问
-- 确认服务器正常运行
-- 检查端口配置
-- 查看服务器错误日志
+3. 管理面板无法访问
+   - 确认服务正常运行
+   - 检查 Nginx 配置
+   - 查看错误日志
 
 ## 许可证
 
@@ -166,21 +115,6 @@ MIT
 
 欢迎提交 Issue 和 Pull Request！
 
-## 更新日志
-
-### v1.0.0
-- 初始版本发布
-- 基本的 PV/UV 统计功能
-- 管理界面
-- 数据导出功能
-
 ## 作者
 
-[xiaohui](52xiaohuia@gmail.com)
-
-## 鸣谢
-
-- [Express](https://expressjs.com/)
-- [Redis](https://redis.io/)
-- [Chart.js](https://www.chartjs.org/)
-- [不蒜子](http://busuanzi.ibruce.info/)（灵感来源）
+[xiaohui](mailto:52xiaohuia@gmail.com)
