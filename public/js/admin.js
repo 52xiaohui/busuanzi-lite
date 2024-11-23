@@ -31,39 +31,36 @@ async function fetchStats() {
         
         // 更新访问记录表格
         updateTable(data.recentLogs);
+        
+        // 更新图表
+        await updateChart(domain);
     } catch (error) {
         console.error('获取统计数据失败:', error);
     }
 }
 
-function updateChart(hourlyData) {
-    const ctx = document.getElementById('visitChart').getContext('2d');
-    
-    if (visitChart) {
-        visitChart.destroy();
-    }
-    
-    visitChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: hourlyData.map(d => d.hour),
-            datasets: [{
-                label: 'PV',
-                data: hourlyData.map(d => d.pv),
-                borderColor: '#2196F3',
-                tension: 0.1
-            }, {
-                label: 'UV',
-                data: hourlyData.map(d => d.uv),
-                borderColor: '#4CAF50',
-                tension: 0.1
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false
+async function updateChart(domain) {
+    try {
+        // 获取最近7天的数据
+        const response = await fetch(`/admin/chart-data?domain=${encodeURIComponent(domain)}`);
+        const data = await response.json();
+        
+        if (visitChart) {
+            visitChart.data.labels = data.dates;
+            visitChart.data.datasets[0].data = data.pvData;
+            visitChart.data.datasets[1].data = data.uvData;
+            visitChart.update();
+        } else {
+            // 如果图表不存在，初始化它
+            initChart();
+            visitChart.data.labels = data.dates;
+            visitChart.data.datasets[0].data = data.pvData;
+            visitChart.data.datasets[1].data = data.uvData;
+            visitChart.update();
         }
-    });
+    } catch (error) {
+        console.error('获取图表数据失败:', error);
+    }
 }
 
 function updateTable(logs) {
@@ -113,9 +110,76 @@ async function resetData() {
     }
 }
 
-// 页面加载完成后获取数据
+// 初始化图表
+function initChart() {
+    if (visitChart) {
+        visitChart.destroy();
+    }
+
+    const ctx = document.getElementById('visitChart').getContext('2d');
+    visitChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: [], // 将被日期填充
+            datasets: [
+                {
+                    label: '每日访问量(PV)',
+                    data: [],
+                    borderColor: '#2196F3',
+                    backgroundColor: 'rgba(33, 150, 243, 0.1)',
+                    tension: 0.1,
+                    fill: true
+                },
+                {
+                    label: '每日访客数(UV)',
+                    data: [],
+                    borderColor: '#4CAF50',
+                    backgroundColor: 'rgba(76, 175, 80, 0.1)',
+                    tension: 0.1,
+                    fill: true
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1,
+                        callback: function(value) {
+                            if (Math.floor(value) === value) {
+                                return value;
+                            }
+                        }
+                    }
+                }
+            },
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.dataset.label || '';
+                            if (label) {
+                                label += ': ';
+                            }
+                            if (context.parsed.y !== null) {
+                                label += Math.floor(context.parsed.y);
+                            }
+                            return label;
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+// 页面加载完成后的初始化
 document.addEventListener('DOMContentLoaded', () => {
-    loadDomains();
+    initChart();  // 先初始化图表
+    loadDomains(); // 然后加载域名并获取数据
     // 每分钟更新一次数据
     setInterval(fetchStats, 60000);
 }); 

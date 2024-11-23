@@ -101,4 +101,60 @@ router.post('/reset', async (req, res) => {
   }
 });
 
+// 修改图表数据接口
+router.get('/chart-data', async (req, res) => {
+  try {
+    const domain = req.query.domain;
+    if (!domain) {
+      return res.status(400).json({ error: '需要指定域名' });
+    }
+
+    const dates = [];
+    const pvData = [];
+    const uvData = [];
+
+    // 获取最近7天的数据
+    for (let i = 0; i < 7; i++) {
+      const date = new Date();
+      date.setDate(date.getDate() - i);
+      const dateStr = date.toISOString().split('T')[0];
+      dates.unshift(dateStr);
+
+      const dayKey = `stats:${domain}:${dateStr}`;
+      const [pv, uv] = await Promise.all([
+        redis.get(`${dayKey}:pv`),
+        redis.pfcount(`${dayKey}:uv`)
+      ]);
+
+      // 确保数据是数字，如果是 null 则返回 0
+      pvData.unshift(parseInt(pv || '0', 10));
+      uvData.unshift(parseInt(uv || '0', 10));
+    }
+
+    // 如果当天没有数据，使用总量数据
+    if (pvData[pvData.length - 1] === 0) {
+      const [totalPV, totalUV] = await Promise.all([
+        redis.get(`site:${domain}:pv`),
+        redis.pfcount(`site:${domain}:uv`)
+      ]);
+      
+      if (totalPV) {
+        pvData[pvData.length - 1] = parseInt(totalPV, 10);
+      }
+      if (totalUV) {
+        uvData[uvData.length - 1] = parseInt(totalUV, 10);
+      }
+    }
+
+    res.json({
+      dates,
+      pvData,
+      uvData
+    });
+  } catch (error) {
+    console.error('获取图表数据失败:', error);
+    res.status(500).json({ error: '服务器错误' });
+  }
+});
+
 export default router; 

@@ -34,10 +34,7 @@ npm install
 3. 配置环境变量：
 ```
 cp .env.example .env
-```
-
-编辑 .env 文件，设置你的配置：
-```
+#编辑 .env 文件，设置你的配置：
 PORT=3000
 REDIS_URL=redis://127.0.0.1:6379
 NODE_ENV=development
@@ -52,7 +49,7 @@ npm start
 
 1. 在你的网页中引入统计脚本：
 ```
-<script async src="http://你的域名:3000/js/count.js"></script>
+<script async src="http://你的域名/js/count.js"></script>
 ```
 
 2. 添加统计显示元素：
@@ -125,18 +122,12 @@ NODE_ENV=production
 npm install -g pm2
 pm2 start server.js --name busuanzi-lite
 ```
+3. 配置反向代理
 
-## 安全建议
 
-1. 配置防火墙，只允许必要的端口访问
-2. 设置 Redis 密码
-3. 使用 HTTPS
-4. 定期备份 Redis 数据
-5. 添加管理界面访问控制
 
 ## 数据备份
-
-建议定期备份 Redis 数据：
+由于 Redis 是基于内存的，数据可能会丢失，建议定期备份 Redis 数据：
 
 1. 自动备份（使用 crontab）：
 ```
@@ -185,7 +176,7 @@ MIT
 
 ## 作者
 
-你的名字 <你的邮箱>
+[xiaohui](52xiaohuia@gmail.com)
 
 ## 鸣谢
 
