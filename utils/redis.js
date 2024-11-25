@@ -76,7 +76,7 @@ async function getStats(domain, path) {
   const cacheKey = `${domain}:${path}`;
   const cached = memoryCache.get(cacheKey);
   
-  if (cached && Date.now() - cached.timestamp < 10000) { // 10秒缓存
+  if (cached && Date.now() - cached.timestamp < 1000) { // 10秒缓存
     return cached.data;
   }
 

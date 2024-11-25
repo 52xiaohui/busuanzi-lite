@@ -2,13 +2,16 @@
     // 获取脚本标签的 src 属性来确定服务器地址
     function getServerUrl() {
         const scripts = document.getElementsByTagName('script');
-        const currentScript = scripts[scripts.length - 1]; // 获取最后一个脚本标签
-        const src = currentScript.src;
-        
-        // 从脚本 URL 中提取基础 URL
-        // 例如: https://b.com/js/count.js -> https://b.com
-        const baseUrl = src.split('/js/count.js')[0];
-        return baseUrl + '/count';
+        for (let script of scripts) {
+            if (script.src && script.src.includes('/js/count.js')) {
+                // 从脚本 URL 中提取基础 URL
+                // 例如: https://b.com/js/count.js -> https://b.com
+                return script.src.split('/js/count.js')[0] + '/count';
+            }
+        }
+        // 如果找不到脚本，返回默认值
+        console.error('无法找到统计脚本的URL');
+        return window.location.origin + '/count';
     }
     
     const t = getServerUrl();
